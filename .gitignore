@@ -1,0 +1,9 @@
+django_mock_app/venv
+django_mock_app/*.pyc
+django_mock_app/*.pyo
+django_mock_app/*.pyd
+django_mock_app/*.sqlite3
+*__pycache__/
+.git
+.vscode
+.idea
