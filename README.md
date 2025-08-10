@@ -1,1 +1,1 @@
-Testing Jenkins configuration
+Testing Jenkins configuration.
