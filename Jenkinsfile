@@ -25,22 +25,18 @@ pipeline {
 
         withCredentials([usernamePassword(credentialsId: 'ghcr', usernameVariable: 'GHCR_USER', passwordVariable: 'GHCR_PAT')]) {
           sh '''
-            set -euo pipefail
-            export DOCKER_CONFIG="$(mktemp -d)"
-            COMMIT="$(echo "$GIT_COMMIT" | cut -c1-7)"
-            IMAGE="ghcr.io/romanw05/django_k3s_raspi_app"   # GHCR repo names must be lowercase
-
+            set -e
+            export DOCKER_CONFIG=$(mktemp -d)
             echo "$GHCR_PAT" | docker login ghcr.io -u "$GHCR_USER" --password-stdin
 
-            # Build FROM the subfolder; context is the app directory
+            # NOTE: context is the subfolder
             docker build -f django_mock_app/Dockerfile \
-              -t "${IMAGE}:${COMMIT}" \
-              -t "${IMAGE}:latest" \
+              -t ghcr.io/romanw05/django_mock_app:${GIT_COMMIT:0:7} \
+              -t ghcr.io/romanw05/django_mock_app:latest \
               django_mock_app
 
-            docker push "${IMAGE}:${COMMIT}"
-            docker push "${IMAGE}:latest"
-
+            docker push ghcr.io/romanw05/django_mock_app:${GIT_COMMIT:0:7}
+            docker push ghcr.io/romanw05/django_mock_app:latest
             docker logout ghcr.io || true
             rm -rf "$DOCKER_CONFIG"
           '''
