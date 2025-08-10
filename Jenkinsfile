@@ -5,6 +5,14 @@ pipeline {
         REPO_URL = "https://github.com/RomanW05/django_K3S_Raspi_app.git"
         BRANCH = "main"
     }
+  stages {
+      stage('Checkout') {
+        steps { 
+            checkout scm
+            sh 'echo "Checkout stage finished"'
+             }
+      }
+  }
     post {
         success {
             echo "=== DEPLOYMENT SUCCESSFUL ==="
