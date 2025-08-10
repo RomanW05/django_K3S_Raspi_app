@@ -2,7 +2,7 @@ pipeline {
     agent any
     environment {
         OWNER       = 'romanw05'
-        IMAGE_NAME  = 'infra_images'
+        IMAGE_NAME  = 'django_K3S_Raspi_app'
         REGISTRY    = 'ghcr.io'
         IMAGE       = "${REGISTRY}/${OWNER}/${IMAGE_NAME}"
         COMMIT      = "${env.GIT_COMMIT?.take(7)}"
