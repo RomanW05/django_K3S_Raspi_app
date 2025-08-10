@@ -20,14 +20,29 @@ pipeline {
       stage('Build & Push to GHCR') {
       when { branch 'main' }
       steps {
+        // sanity check: Dockerfile in subfolder
+        sh 'test -f django_mock_app/Dockerfile || { echo "Dockerfile missing at django_mock_app/Dockerfile"; exit 1; }'
+
         withCredentials([usernamePassword(credentialsId: 'ghcr', usernameVariable: 'GHCR_USER', passwordVariable: 'GHCR_PAT')]) {
           sh '''
-            set -e
+            set -euo pipefail
+            export DOCKER_CONFIG="$(mktemp -d)"
+            COMMIT="$(echo "$GIT_COMMIT" | cut -c1-7)"
+            IMAGE="ghcr.io/romanw05/django_k3s_raspi_app"   # GHCR repo names must be lowercase
+
             echo "$GHCR_PAT" | docker login ghcr.io -u "$GHCR_USER" --password-stdin
-            docker build -t ${IMAGE}:${COMMIT} -t ${IMAGE}:latest .
-            docker push ${IMAGE}:${COMMIT}
-            docker push ${IMAGE}:latest
-            docker logout ghcr.io
+
+            # Build FROM the subfolder; context is the app directory
+            docker build -f django_mock_app/Dockerfile \
+              -t "${IMAGE}:${COMMIT}" \
+              -t "${IMAGE}:latest" \
+              django_mock_app
+
+            docker push "${IMAGE}:${COMMIT}"
+            docker push "${IMAGE}:latest"
+
+            docker logout ghcr.io || true
+            rm -rf "$DOCKER_CONFIG"
           '''
         }
       }
