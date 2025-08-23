@@ -7,7 +7,7 @@ pipeline {
         IMAGE       = "${REGISTRY}/${OWNER}/${IMAGE_NAME}"
         COMMIT      = "${env.GIT_COMMIT?.take(7)}"
         DEPLOY_DIR  = "/opt/django_k3s"
-        REPO_URL    = "https://github.com/RomanW05/django_K3S_Raspi_app.git"
+        REPO_URL    = "git@github.com:RomanW05/django_K3S_Raspi_app.git"
         BRANCH      = "main"
     }
   stages {
