@@ -1,0 +1,18 @@
+image:
+  # Jenkins will override these via --set
+  repository: ghcr.io/romanw05/infra_images
+  tag: "latest"
+  pullPolicy: IfNotPresent
+
+imagePullSecrets:
+  - name: ghcr
+
+replicaCount: 1
+
+service:
+  type: ClusterIP
+  port: 8000
+
+containerPort: 8000
+
+resources: {}
