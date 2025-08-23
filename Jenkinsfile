@@ -56,13 +56,11 @@ pipeline {
     set -euo pipefail
 
     COMMIT="${COMMIT:-$(echo "$GIT_COMMIT" | cut -c1-7)}"
-
-    # sanity
     command -v kubectl >/dev/null
     command -v helm    >/dev/null
     kubectl get ns >/dev/null
 
-    # Force resource names to match the release (so Deployment is "django-mock-app")
+    # Deploy/upgrade. fullnameOverride makes the Deployment name == release.
     helm upgrade --install "${RELEASE}" "${WORKSPACE}/${CHART_DIR}" \
       --namespace "${NAMESPACE}" --create-namespace \
       --set image.repository="${IMAGE}" \
@@ -71,8 +69,30 @@ pipeline {
       --set fullnameOverride="${RELEASE}" \
       --wait --timeout 5m
 
-    # Now this name exists for sure:
-    kubectl -n "${NAMESPACE}" rollout status deploy/${RELEASE}
+    # Try the exact name first
+    if kubectl -n "${NAMESPACE}" get deploy/"${RELEASE}" >/dev/null 2>&1; then
+      kubectl -n "${NAMESPACE}" rollout status deploy/"${RELEASE}" --timeout=300s
+      exit 0
+    fi
+
+    # Fallback: discover deployments by Helm labels (in case templates ignore fullnameOverride)
+    DEPLOYS="$(kubectl -n "${NAMESPACE}" get deploy \
+      -l "app.kubernetes.io/instance=${RELEASE}" \
+      -o jsonpath='{range .items[*]}{.metadata.name}{"\\n"}{end}')"
+
+    if [ -z "${DEPLOYS}" ]; then
+      echo "No Deployment found for release ${RELEASE} in ns ${NAMESPACE}"
+      echo "Resources in release (first 200 lines):"
+      helm -n "${NAMESPACE}" get manifest "${RELEASE}" | sed -n '1,200p' || true
+      kubectl -n "${NAMESPACE}" get all -l "app.kubernetes.io/instance=${RELEASE}" || true
+      exit 3
+    fi
+
+    echo "Waiting for rollout of:"
+    echo "${DEPLOYS}"
+    for d in ${DEPLOYS}; do
+      kubectl -n "${NAMESPACE}" rollout status deploy/"$d" --timeout=300s
+    done
     '''
       }
     }
