@@ -53,25 +53,27 @@ pipeline {
       when { branch 'main' }
       steps {
         sh '''#!/usr/bin/env bash
-          set -euo pipefail
+    set -euo pipefail
 
-          COMMIT="${COMMIT:-$(echo "$GIT_COMMIT" | cut -c1-7)}"
+    COMMIT="${COMMIT:-$(echo "$GIT_COMMIT" | cut -c1-7)}"
 
-          command -v kubectl >/dev/null
-          command -v helm    >/dev/null
+    # sanity
+    command -v kubectl >/dev/null
+    command -v helm    >/dev/null
+    kubectl get ns >/dev/null
 
-          # sanity
-          kubectl get ns >/dev/null
+    # Force resource names to match the release (so Deployment is "django-mock-app")
+    helm upgrade --install "${RELEASE}" "${WORKSPACE}/${CHART_DIR}" \
+      --namespace "${NAMESPACE}" --create-namespace \
+      --set image.repository="${IMAGE}" \
+      --set image.tag="${COMMIT}" \
+      --set-string imagePullSecrets[0].name=ghcr \
+      --set fullnameOverride="${RELEASE}" \
+      --wait --timeout 5m
 
-          helm upgrade --install "${RELEASE}" "${CHART_DIR}" \
-            --namespace "${NAMESPACE}" --create-namespace \
-            --set image.repository="${IMAGE}" \
-            --set image.tag="${COMMIT}" \
-            --set-string imagePullSecrets[0].name=ghcr \
-            --wait --timeout 5m
-
-          kubectl -n "${NAMESPACE}" rollout status deploy/${RELEASE}
-        '''
+    # Now this name exists for sure:
+    kubectl -n "${NAMESPACE}" rollout status deploy/${RELEASE}
+    '''
       }
     }
   }
