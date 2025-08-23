@@ -13,6 +13,7 @@ pipeline {
         NAMESPACE = 'apps'
         RELEASE   = 'django-mock-app'
         CHART_DIR = 'helm/django-mock-app'
+        KUBECONFIG = '/var/lib/jenkins/.kube/config'
     }
   stages {
       stage('Checkout') {
@@ -52,28 +53,24 @@ pipeline {
       when { branch 'main' }
       steps {
         sh '''#!/usr/bin/env bash
-        set -euo pipefail
+          set -euo pipefail
 
-        # Compute short SHA safely
-        COMMIT="${COMMIT:-$(echo "$GIT_COMMIT" | cut -c1-7)}"
+          COMMIT="${COMMIT:-$(echo "$GIT_COMMIT" | cut -c1-7)}"
 
-        # Sanity checks
-        command -v kubectl >/dev/null
-        command -v helm    >/dev/null || { echo "Helm not found. Install Helm v3 on the agent."; exit 127; }
+          command -v kubectl >/dev/null
+          command -v helm    >/dev/null
 
-        # Confirm kube access (jenkins kubeconfig is set up)
-        kubectl get ns >/dev/null
+          # sanity
+          kubectl get ns >/dev/null
 
-        # Deploy / upgrade
-        helm upgrade --install "${RELEASE}" "${CHART_DIR}" \
-          --namespace "${NAMESPACE}" --create-namespace \
-          --set image.repository="${IMAGE}" \
-          --set image.tag="${COMMIT}" \
-          --set-string imagePullSecrets[0].name=ghcr \
-          --wait --timeout 5m
+          helm upgrade --install "${RELEASE}" "${CHART_DIR}" \
+            --namespace "${NAMESPACE}" --create-namespace \
+            --set image.repository="${IMAGE}" \
+            --set image.tag="${COMMIT}" \
+            --set-string imagePullSecrets[0].name=ghcr \
+            --wait --timeout 5m
 
-        # Rollout confirmation (redundant when using --wait, but nice in logs)
-        kubectl -n "${NAMESPACE}" rollout status deploy/${RELEASE}
+          kubectl -n "${NAMESPACE}" rollout status deploy/${RELEASE}
         '''
       }
     }
